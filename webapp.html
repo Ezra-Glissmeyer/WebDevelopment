@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe - Dark Mode + Draws</title>
+  <link href="css/styles.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #121212;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px;
+    }
+    h1 {
+      color: #ffffff;
+    }
+    #controls {
+      margin-bottom: 20px;
+    }
+    select {
+      padding: 5px;
+      font-size: 1em;
+      background-color: #222;
+      color: white;
+      border: 1px solid #555;
+    }
+    #score {
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 5px;
+    }
+    .cell {
+      background: #1e1e1e;
+      border: 2px solid #777;
+      font-size: 2.5em;
+      text-align: center;
+      line-height: 100px;
+      cursor: pointer;
+      user-select: none;
+      color: #00e5ff;
+    }
+    .cell:hover {
+      background: #333;
+    }
+    #message {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #f1f1f1;
+    }
+    #resetGame {
+      margin-top: 15px;
+      padding: 8px 20px;
+      font-size: 1em;
+      background-color: #00c853;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #resetGame:hover {
+      background-color: #009624;
+    }
+  </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light" id="mainNav">
+        <div class="container px-4 px-lg-5">
+            <a class="navbar-brand" href="index.html"></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+                Menu
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarResponsive">
+                <ul class="navbar-nav ms-auto py-4 py-lg-0">
+                    <li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="scratch.html">Home</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+  <h1>Tic Tac Toe</h1>
+  <div id="controls">
+    Difficulty: 
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+  </div>
+  <div id="score">You: 0 | Computer: 0 | Draws: 0</div>
+  <div id="board"></div>
+  <div id="message"></div>
+  <button id="resetGame" style="display:none;">Restart Game</button>
+
+  <script>
+    const board = document.getElementById("board");
+    const message = document.getElementById("message");
+    const scoreDisplay = document.getElementById("score");
+    const resetButton = document.getElementById("resetGame");
+    const difficultySelect = document.getElementById("difficulty");
+
+    let cells = Array(9).fill(null);
+    let isGameOver = false;
+    let playerScore = 0;
+    let computerScore = 0;
+    let drawScore = 0;
+
+    function renderBoard() {
+      board.innerHTML = '';
+      cells.forEach((val, idx) => {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.textContent = val || '';
+        cell.addEventListener("click", () => playerMove(idx));
+        board.appendChild(cell);
+      });
+    }
+
+    function playerMove(index) {
+      if (cells[index] || isGameOver) return;
+      cells[index] = 'X';
+      renderBoard();
+      if (checkWinner('X')) {
+        playerScore++;
+        message.textContent = "You win this round!";
+        checkOverallWinner();
+        return;
+      }
+      if (cells.every(cell => cell)) {
+        message.textContent = "It's a draw!";
+        drawScore++;
+        checkOverallWinner();
+        return;
+      }
+      setTimeout(computerMove, 500);
+    }
+
+    function computerMove() {
+      const level = difficultySelect.value;
+
+      let move;
+      if (level === 'easy') {
+        move = randomMove();
+      } else if (level === 'medium') {
+        move = mediumMove();
+      } else {
+        move = bestMove(); // Hard - Minimax
+      }
+
+      cells[move] = 'O';
+      renderBoard();
+      if (checkWinner('O')) {
+        computerScore++;
+        message.textContent = "Computer wins this round!";
+        checkOverallWinner();
+        return;
+      }
+      if (cells.every(cell => cell)) {
+        message.textContent = "It's a draw!";
+        drawScore++;
+        checkOverallWinner();
+      }
+    }
+
+    function randomMove() {
+      const empty = cells.map((val, idx) => val ? null : idx).filter(v => v !== null);
+      return empty[Math.floor(Math.random() * empty.length)];
+    }
+
+    function mediumMove() {
+      for (let i = 0; i < cells.length; i++) {
+        if (!cells[i]) {
+          cells[i] = 'X';
+          if (checkWinner('X')) {
+            cells[i] = null;
+            return i;
+          }
+          cells[i] = null;
+        }
+      }
+      return randomMove();
+    }
+
+    function bestMove() {
+      let bestScore = -Infinity;
+      let move;
+      for (let i = 0; i < cells.length; i++) {
+        if (!cells[i]) {
+          cells[i] = 'O';
+          let score = minimax(cells, 0, false);
+          cells[i] = null;
+          if (score > bestScore) {
+            bestScore = score;
+            move = i;
+          }
+        }
+      }
+      return move;
+    }
+
+    function minimax(newBoard, depth, isMaximizing) {
+      if (checkWinnerOnBoard(newBoard, 'O')) return 10 - depth;
+      if (checkWinnerOnBoard(newBoard, 'X')) return depth - 10;
+      if (newBoard.every(cell => cell)) return 0;
+
+      if (isMaximizing) {
+        let best = -Infinity;
+        for (let i = 0; i < newBoard.length; i++) {
+          if (!newBoard[i]) {
+            newBoard[i] = 'O';
+            let score = minimax(newBoard, depth + 1, false);
+            newBoard[i] = null;
+            best = Math.max(score, best);
+          }
+        }
+        return best;
+      } else {
+        let best = Infinity;
+        for (let i = 0; i < newBoard.length; i++) {
+          if (!newBoard[i]) {
+            newBoard[i] = 'X';
+            let score = minimax(newBoard, depth + 1, true);
+            newBoard[i] = null;
+            best = Math.min(score, best);
+          }
+        }
+        return best;
+      }
+    }
+
+    function checkWinner(symbol) {
+      return checkWinnerOnBoard(cells, symbol);
+    }
+
+    function checkWinnerOnBoard(board, symbol) {
+      const wins = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+      return wins.some(comb => comb.every(i => board[i] === symbol));
+    }
+
+    function checkOverallWinner() {
+      updateScore();
+      if (playerScore === 3) {
+        message.textContent = "🎉 You win the game!";
+        endGame();
+      } else if (computerScore === 3) {
+        message.textContent = "💻 Computer wins the game!";
+        endGame();
+      } else {
+        setTimeout(nextRound, 1500);
+      }
+    }
+
+    function nextRound() {
+      cells = Array(9).fill(null);
+      isGameOver = false;
+      renderBoard();
+      message.textContent = "";
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = `You: ${playerScore} | Computer: ${computerScore} | Draws: ${drawScore}`;
+    }
+
+    function endGame() {
+      isGameOver = true;
+      resetButton.style.display = 'inline-block';
+    }
+
+    resetButton.addEventListener("click", () => {
+      playerScore = 0;
+      computerScore = 0;
+      drawScore = 0;
+      nextRound();
+      updateScore();
+      message.textContent = "";
+      resetButton.style.display = 'none';
+    });
+
+    renderBoard();
+  </script>
+
+</body>
+</html>
